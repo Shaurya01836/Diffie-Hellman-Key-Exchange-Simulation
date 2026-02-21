@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diffie-Hellman Key Exchange</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg: #f1f5f9;
+            --surface: #ffffff;
+            --text: #1e293b;
+            --border: #cbd5e1;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            padding: 2rem;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        h1, h2, h3 { color: var(--primary); }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        .card {
+            background: var(--surface);
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            border: 1px solid var(--border);
+        }
+        .full-width { grid-column: 1 / -1; }
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: opacity 0.2s;
+            margin-bottom: 1rem;
+        }
+        button:hover { opacity: 0.9; }
+        .data-row {
+            margin-bottom: 0.75rem;
+            font-family: monospace;
+            background: var(--bg);
+            padding: 0.5rem;
+            border-radius: 4px;
+            word-break: break-all;
+        }
+        .label {
+            font-weight: bold;
+            font-family: sans-serif;
+            color: #64748b;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+        .success {
+            background-color: #dcfce7;
+            color: #166534;
+            padding: 1rem;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            display: none;
+            border: 1px solid #bbf7d0;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Diffie-Hellman Key Exchange Simulation</h1>
+    <p>Using randomized Dummy Personal Identifiers as XOR entropy sources. <i>Note: All data generated is strictly simulated format data for academic purposes.</i></p>
+
+    <button onclick="runSimulation()">Run Key Exchange Simulation</button>
+
+    <div class="card full-width">
+        <h2>Step 1: Global Prime Parameters</h2>
+        <div class="data-row"><span class="label">Prime Modulus (p):</span> <span id="val-p">-</span></div>
+        <div class="data-row"><span class="label">Primitive Root (g):</span> <span id="val-g">-</span></div>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h2>User A (Shaurya)</h2>
+            <div class="data-row"><span class="label">Dummy PAN:</span> <span id="a-pan">-</span></div>
+            <div class="data-row"><span class="label">Dummy Aadhaar:</span> <span id="a-aadhaar">-</span></div>
+            <div class="data-row"><span class="label">Dummy DoB:</span> <span id="a-dob">-</span></div>
+            <hr>
+            <div class="data-row"><span class="label">Private Key (XORed):</span> <span id="a-priv">-</span></div>
+            <div class="data-row"><span class="label">Public Key (Generated):</span> <span id="a-pub">-</span></div>
+        </div>
+
+        <div class="card">
+            <h2>User B (Nitin)</h2>
+            <div class="data-row"><span class="label">Dummy PAN:</span> <span id="b-pan">-</span></div>
+            <div class="data-row"><span class="label">Dummy Aadhaar:</span> <span id="b-aadhaar">-</span></div>
+            <div class="data-row"><span class="label">Dummy DoB:</span> <span id="b-dob">-</span></div>
+            <hr>
+            <div class="data-row"><span class="label">Private Key (XORed):</span> <span id="b-priv">-</span></div>
+            <div class="data-row"><span class="label">Public Key (Generated):</span> <span id="b-pub">-</span></div>
+        </div>
+
+        <div class="card full-width">
+            <h2>Key Verification</h2>
+            <div class="data-row"><span class="label">Alice's Shared Secret:</span> <span id="a-shared">-</span></div>
+            <div class="data-row"><span class="label">Bob's Shared Secret:</span> <span id="b-shared">-</span></div>
+            <div id="success-msg" class="success">Keys Match! Secure Channel Established.</div>
+        </div>
+    </div>
+
+    <script>
+      
+        function isPrime(num) {
+            if (num <= 1n) return false;
+            if (num <= 3n) return true;
+            if (num % 2n === 0n || num % 3n === 0n) return false;
+            for (let i = 5n; i * i <= num; i += 6n) {
+                if (num % i === 0n || num % (i + 2n) === 0n) return false;
+            }
+            return true;
+        }
+
+        function getRandomPrime(min, max) {
+            let minBig = BigInt(min);
+            let maxBig = BigInt(max);
+            let range = maxBig - minBig;
+            while (true) {
+                let rand = BigInt(Math.floor(Math.random() * Number(range)));
+                let candidate = minBig + rand;
+                if (isPrime(candidate)) return candidate;
+            }
+        }
+
+        function modPow(base, exp, mod) {
+            let res = 1n;
+            base = base % mod;
+            while (exp > 0n) {
+                if (exp % 2n === 1n) res = (res * base) % mod;
+                exp = exp / 2n;
+                base = (base * base) % mod;
+            }
+            return res;
+        }
+
+      
+        function generatePAN() {
+            const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            const digits = "0123456789";
+            let pan = "";
+            for(let i=0; i<5; i++) pan += letters[Math.floor(Math.random()*26)];
+            for(let i=0; i<4; i++) pan += digits[Math.floor(Math.random()*10)];
+            pan += letters[Math.floor(Math.random()*26)];
+            return pan;
+        }
+
+        function generateAadhaar() {
+            let a = "";
+            for(let i=0; i<12; i++) a += Math.floor(Math.random()*10);
+            return a;
+        }
+
+        function generateDOB() {
+            let d = Math.floor(Math.random()*28)+1;
+            let m = Math.floor(Math.random()*12)+1;
+            let y = Math.floor(Math.random()*30)+1980;
+            return `${d.toString().padStart(2,'0')}-${m.toString().padStart(2,'0')}-${y}`;
+        }
+
+        function stringToBigInt(str) {
+            let hex = "";
+            for(let i=0; i<str.length; i++) {
+                // Convert each char to hex code
+                hex += str.charCodeAt(i).toString(16).padStart(2, '0');
+            }
+            return BigInt("0x" + hex);
+        }
+
+      
+        function runSimulation() {
+          
+            document.getElementById('success-msg').style.display = 'none';
+
+          
+            const p = getRandomPrime(50000, 100000); 
+            const g = getRandomPrime(10000, 49999); // g < p
+            
+            document.getElementById('val-p').innerText = p.toString();
+            document.getElementById('val-g').innerText = g.toString();
+
+          
+            const aPan = generatePAN();
+            const aAad = generateAadhaar();
+            const aDob = generateDOB();
+            
+            document.getElementById('a-pan').innerText = aPan;
+            document.getElementById('a-aadhaar').innerText = aAad;
+            document.getElementById('a-dob').innerText = aDob;
+
+            const aPriv = stringToBigInt(aPan) ^ stringToBigInt(aAad) ^ stringToBigInt(aDob);
+            document.getElementById('a-priv').innerText = aPriv.toString();
+
+         
+            const bPan = generatePAN();
+            const bAad = generateAadhaar();
+            const bDob = generateDOB();
+            
+            document.getElementById('b-pan').innerText = bPan;
+            document.getElementById('b-aadhaar').innerText = bAad;
+            document.getElementById('b-dob').innerText = bDob;
+
+            const bPriv = stringToBigInt(bPan) ^ stringToBigInt(bAad) ^ stringToBigInt(bDob);
+            document.getElementById('b-priv').innerText = bPriv.toString();
+
+         
+            const aPub = modPow(g, aPriv, p);
+            const bPub = modPow(g, bPriv, p);
+            
+            document.getElementById('a-pub').innerText = aPub.toString();
+            document.getElementById('b-pub').innerText = bPub.toString();
+
+          
+            const aShared = modPow(bPub, aPriv, p);
+            const bShared = modPow(aPub, bPriv, p);
+
+            document.getElementById('a-shared').innerText = aShared.toString();
+            document.getElementById('b-shared').innerText = bShared.toString();
+
+            if (aShared === bShared) {
+                document.getElementById('success-msg').style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>
